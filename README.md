@@ -11,12 +11,14 @@ https://datasets-sgm.s3.eu-west-3.amazonaws.com/car_images.zip
 The original Processed CAR dataset (size = 100 x 100) is hosted on Amazon S3. It can be downloaded from following URL
 https://datasets-sgm.s3.eu-west-3.amazonaws.com/car_images_100x100.zip
 
-
-# Loss
+#
+## Loss
 ![GAN Loss](assets/gan_loss.png)
 
-![GAN in action](assets/gan_animation.gif)
+#
+## Visualization of Generator's progression
+![Visualization of Generator's progression](assets/gan_animation.gif)
 
-![Real vs Fake Comparison](assets/gan_generated_comparison.png)
-
-![Generated Fake Image](assets/gan_generated_fake_image.png)
+#
+## Real Images vs. Fake Images
+![Real Images vs. Fake Images](assets/gan_generated_comparison.png)
