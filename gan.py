@@ -14,6 +14,8 @@ from torchvision.datasets import MNIST
 # from torch.utils.data.dataset ilsmport Dataset
 from PIL import Image
 from pathlib import Path
+import wandb
+
 
 MANUAL_SEED=42
 
@@ -138,6 +140,7 @@ class DCGAN(pl.LightningModule):
         ndf:int=64,
         nc:int=3,
         data_path:str="./data/",
+        num_epochs=20,
         **kwargs
     ):
         super().__init__()
@@ -148,6 +151,7 @@ class DCGAN(pl.LightningModule):
         self.b2 = b2
         self.batch_size = batch_size
         self.data_path=data_path
+        self.num_epochs = num_epochs
         self.num_workers=num_workers
         self.ngf=ngf
         self.ndf=ndf
@@ -262,30 +266,43 @@ class DCGAN(pl.LightningModule):
 
 def main(args: argparse.Namespace) -> None:
 
-    logger=pl.loggers.TensorBoardLogger(save_dir="/logs")
-    
-    args.weight_summary="full"
 
     # Init model from datamodule's attributes
     model = DCGAN(**vars(args))
 
+    logger=pl.loggers.TensorBoardLogger(save_dir="/logs")    
+    args.weight_summary="full"
+    
+    if args.wandb:
+        logger = pl.loggers.WandbLogger()
+        logger.watch(model)
+        logger.log_hyperparams(vars(args))
+
+    callbacks = []
+    args.weights_summary = "full"  # Print full summary of the model
+
     # Init trainer
     if args.gpus:
-        trainer = pl.Trainer(gpus=args.gpus)
+        trainer = pl.Trainer(gpus=args.gpus,max_epochs=args.num_epochs,callbacks=callbacks, logger=logger, weights_save_path="training/logs")
     elif args.tpu_cores:
-        trainer=pl.Trainer(tpu_cores=args.tpu_cores)
+        trainer=pl.Trainer(tpu_cores=args.tpu_cores,max_epochs=args.num_epochs,callbacks=callbacks, logger=logger, weights_save_path="training/logs")
     
+    trainer.tune(model)  # If passing --auto_lr_find, this will set learning rate
+
     # Train
     trainer.fit(model)
-
+    trainer.save_checkpoint(f"carGAN_custom_checkpoint_{args.num_epochs}.ckpt")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--gpus", type=int, default=0, help="number of GPUs")
+    parser.add_argument("--tpu_cores", type=int, default=0, help="number of TPUs")
+    parser.add_argument("--num_epochs", type=int, default=10, help="number of epochs")
     parser.add_argument("--num_workers", type=int, default=2, help="number of worker threads")
     parser.add_argument("--data_path", type=str, default="data/", help="Path to Image folder")
     parser.add_argument("--batch_size", type=int, default=64, help="size of batch")
     parser.add_argument("--lr", type=float, default=0.0002, help="Adam: learning rate")
+    parser.add_argument("--wandb", action="store_true", default=False)
     parser.add_argument(
         "--b1",
         type=float,
