@@ -3,6 +3,7 @@ import torch
 import torchvision
 import pytorch_lightning as pl
 from models import DCGAN
+from models import LatentDimInterpolator, TensorboardGenerativeModelImageSampler
 import torchvision.transforms as transforms
 
 
@@ -28,16 +29,24 @@ def main(args=None):
         ]
     )
     dataset = torchvision.datasets.ImageFolder(root=script_args.data_dir, transform=transform)
-    dataloader = torch.utils.data.DataLoader(dataset, batch_size=script_args.batch_size, shuffle=True, num_workers=2)
+    dataloader = torch.utils.data.DataLoader(
+        dataset, batch_size=script_args.batch_size, shuffle=True, num_workers=script_args.num_workers
+    )
     image_channels = 3
 
     parser = DCGAN.add_to_argparse(parser)
     parser = pl.Trainer.add_argparse_args(parser)
     args = parser.parse_args(args)
+    args.weight_summary = "full"
     model = DCGAN(**vars(args), image_channels=image_channels)
 
-    callbacks = []
-    trainer = pl.Trainer.from_argparse_args(args, max_epochs=args.num_epochs, callbacks=callbacks)
+    logger = pl.loggers.TensorBoardLogger(save_dir="logs/")
+
+    callbacks = [
+        LatentDimInterpolator(interpolate_epoch_interval=5),
+        TensorboardGenerativeModelImageSampler(num_samples=5),
+    ]
+    trainer = pl.Trainer.from_argparse_args(args, max_epochs=args.num_epochs, logger=logger, callbacks=callbacks)
     trainer.fit(model, dataloader)
 
     trainer.save_checkpoint(f"carGAN_custom_checkpoint_{args.num_epochs}.ckpt")
