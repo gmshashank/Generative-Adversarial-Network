@@ -22,7 +22,7 @@ class LatentDimInterpolator(pl.Callback):
         self.range_end = range_end
         self.steps = steps
         self.num_samples = num_samples
-        self.normalize=normalize
+        self.normalize = normalize
 
     def interpolate_latent_space(self, pl_module: pl.LightningModule, latent_dim: int) -> List[torch.Tensor]:
         images = []

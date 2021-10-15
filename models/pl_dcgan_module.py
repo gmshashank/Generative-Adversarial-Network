@@ -1,5 +1,5 @@
 import argparse
-from typing import Any
+from typing import Any, List
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
@@ -18,9 +18,11 @@ class DCGAN(pl.LightningModule):
         beta2: float = 0.999,
         feature_maps_generator: int = 64,
         feature_maps_discriminator: int = 64,
-        image_channels: int = 1,
-        latent_dim: int = 100,
+        image_channels: int = 3,
+        latent_dim: int = 64,
         learning_rate: float = 0.0002,
+        generator_loss_collection: List = [],
+        discriminator_loss_collection: List = [],
         **kwargs: Any,
     ) -> None:
         super().__init__()
@@ -28,15 +30,18 @@ class DCGAN(pl.LightningModule):
         self.generator = self._get_generator()
         self.discriminator = self._get_discriminator()
         self.criterion = nn.BCELoss()
+        self.generator_loss_collection = generator_loss_collection
+        self.discriminator_loss_collection = discriminator_loss_collection
 
     @staticmethod
     def _weights_init(m):
+        # custom weights initialization called on netG and netD
         classname = m.__class__.__name__
         if classname.find("Conv") != -1:
-            torch.nn.init.normal_(m.weight, 0.0, 0.02)
+            nn.init.normal_(m.weight.data, 0.0, 0.02)
         elif classname.find("BatchNorm") != -1:
-            torch.nn.init.normal_(m.weight, 1.0, 0.02)
-            torch.nn.init.zeros_(m.bias)
+            nn.init.normal_(m.weight.data, 1.0, 0.02)
+            nn.init.constant_(m.bias.data, 0)
 
     def _get_generator(self) -> nn.Module:
         generator = Generator(self.hparams.latent_dim, self.hparams.feature_maps_generator, self.hparams.image_channels)
@@ -67,7 +72,7 @@ class DCGAN(pl.LightningModule):
 
     def _generator_step(self, real: torch.Tensor) -> torch.Tensor:
         generator_loss = self._get_generator_loss(real)
-        self.log("loss/gen", generator_loss, on_epoch=True)
+        self.log("loss/generator", generator_loss, on_epoch=True)
         return generator_loss
         # tqdm_dict = {"generator_loss",generator_loss}
         # generator_output = OrderedDict(
@@ -99,7 +104,7 @@ class DCGAN(pl.LightningModule):
 
     def _discriminator_step(self, real: torch.Tensor) -> torch.Tensor:
         discriminator_loss = self._get_discriminator_loss(real)
-        self.log("loss/disc", discriminator_loss, on_epoch=True)
+        self.log("loss/discriminator", discriminator_loss, on_epoch=True)
         return discriminator_loss
         # tqdm_dict = {"discriminator_loss": discriminator_loss}
         # discriminator_output = OrderedDict(
@@ -119,9 +124,11 @@ class DCGAN(pl.LightningModule):
         # Train Generator
         if optimizer_idx == 0:
             result = self._generator_step(real)
+            self.generator_loss_collection.append(result.item())
 
         if optimizer_idx == 1:
             result = self._discriminator_step(real)
+            self.discriminator_loss_collection.append(result.item())
 
         return result
 
