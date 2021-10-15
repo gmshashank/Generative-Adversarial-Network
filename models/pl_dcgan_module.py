@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import pytorch_lightning as pl
 import torchvision
+from collections import OrderedDict
 
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
@@ -66,8 +67,13 @@ class DCGAN(pl.LightningModule):
 
     def _generator_step(self, real: torch.Tensor) -> torch.Tensor:
         generator_loss = self._get_generator_loss(real)
-        self.log("loss/generator", generator_loss, on_epoch=True)
+        self.log("loss/gen", generator_loss, on_epoch=True)
         return generator_loss
+        # tqdm_dict = {"generator_loss",generator_loss}
+        # generator_output = OrderedDict(
+        #     {"loss": generator_loss, "progress_bar": tqdm_dict, "log": tqdm_dict, "generator_loss": generator_loss,}
+        # )
+        # return generator_output
 
     def _get_noise(self, n_samples: int, latent_dim: int) -> torch.Tensor:
         return torch.randn(n_samples, latent_dim, device=self.device)
@@ -93,8 +99,18 @@ class DCGAN(pl.LightningModule):
 
     def _discriminator_step(self, real: torch.Tensor) -> torch.Tensor:
         discriminator_loss = self._get_discriminator_loss(real)
-        self.log("loss/discriminator", discriminator_loss, on_epoch=True)
+        self.log("loss/disc", discriminator_loss, on_epoch=True)
         return discriminator_loss
+        # tqdm_dict = {"discriminator_loss": discriminator_loss}
+        # discriminator_output = OrderedDict(
+        #     {
+        #         "loss": discriminator_loss,
+        #         "progress_bar": tqdm_dict,
+        #         "log": tqdm_dict,
+        #         "discriminator_loss": discriminator_loss,
+        #     }
+        # )
+        # return discriminator_output
 
     def training_step(self, batch, batch_idx, optimizer_idx):
         real, _ = batch
@@ -117,4 +133,5 @@ class DCGAN(pl.LightningModule):
         parser.add_argument("--feature_maps_discriminator", type=int, default=64)
         parser.add_argument("--latent_dim", type=int, default=100)
         parser.add_argument("--learning_rate", type=float, default=0.002)
+        parser.add_argument("--log_path", type=str, default=0.002)
         return parser
