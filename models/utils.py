@@ -20,8 +20,9 @@ class LatentDimInterpolator(pl.Callback):
         self.interpolate_epoch_interval = interpolate_epoch_interval
         self.range_start = range_start
         self.range_end = range_end
-        self.num_samples = num_samples
         self.steps = steps
+        self.num_samples = num_samples
+        self.normalize=normalize
 
     def interpolate_latent_space(self, pl_module: pl.LightningModule, latent_dim: int) -> List[torch.Tensor]:
         images = []
