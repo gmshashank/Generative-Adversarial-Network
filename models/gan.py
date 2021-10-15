@@ -10,6 +10,7 @@ class Generator(nn.Module):
             self._make_gen_block(feature_maps * 8, feature_maps * 4, kernel_size=4),
             self._make_gen_block(feature_maps * 4, feature_maps * 2, kernel_size=4),
             self._make_gen_block(feature_maps * 2, feature_maps, kernel_size=4),
+            self._make_gen_block(feature_maps, feature_maps, kernel_size=4),
             self._make_gen_block(feature_maps, image_channels, kernel_size=4, last_block=True),
         )
 
@@ -45,9 +46,10 @@ class Discriminator(nn.Module):
         self.discriminator = nn.Sequential(
             self._make_disc_block(image_channels, feature_maps, kernel_size=4, batch_norm=False),
             self._make_disc_block(feature_maps, feature_maps * 2, kernel_size=4),
+            self._make_disc_block(feature_maps * 2, feature_maps * 2, kernel_size=4),
             self._make_disc_block(feature_maps * 2, feature_maps * 4, kernel_size=4),
-            self._make_disc_block(feature_maps * 4, feature_maps * 8, kernel_size=4),
-            self._make_disc_block(feature_maps * 8, 1, kernel_size=4, stride=1, padding=0, last_block=True),
+            self._make_disc_block(feature_maps * 4, feature_maps * 4, kernel_size=4),
+            self._make_disc_block(feature_maps * 4, 1, kernel_size=4, stride=1, padding=0, last_block=True),
         )
 
     @staticmethod
@@ -63,13 +65,14 @@ class Discriminator(nn.Module):
     ) -> nn.Sequential:
         if not last_block:
             disc_block = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=bias),
-                nn.BatchNorm2d(out_channels) if batch_norm else nn.Identity(),
+                nn.utils.spectral_norm(nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=bias)),
+                # nn.BatchNorm2d(out_channels) if batch_norm else nn.Identity(),
                 nn.LeakyReLU(0.2, inplace=True),
             )
         else:
             disc_block = nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=bias), nn.Sigmoid(),
+                nn.utils.spectral_norm(nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=bias)),
+                nn.Sigmoid(),
             )
         return disc_block
 
